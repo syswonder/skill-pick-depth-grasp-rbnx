@@ -1,0 +1,58 @@
+# skill-pick-depth-grasp-rbnx — 深度几何抓取技能（robonix/skill/pick/*）。
+#
+# 与 skill-pick-vertical-grasp-rbnx 的关系：**同一个 pick 命名空间的另一个实现**。
+# 两者语义都是"抓起来并保持握持"，差别在"物体在哪、顶面多高"这一段怎么来：
+#   - vertical_grasp：bbox + 2D 单应 + **固定桌面高度** → 一个垂直抓取位姿；
+#   - 本技能：一帧 RGB-D → 承托面/物体顶面/长轴/闭合方向/跨度（**不依赖固定台面高度**），
+#     斜面上、物体被挪过、检测框偏了都不影响定位精度。
+# 一个部署里只能起一个 pick 实现。
+#
+# 视觉算法在 service 里，不在本包：
+#   robonix/service/perception/grasp_geometry/locate
+#     —— 服务自己订阅相机（primitive/camera/{rgb,depth}），取最新一帧，输出**相机系**
+#        几何量。本技能经 atlas 解析它的 gRPC 端点后调用 `Locate`，再用手眼外参
+#        `gripper_camera` 把结果乘到臂基座系。**技能端不订阅相机、不依赖宿主 HTTP 服务、
+#        不碰 VLM 凭据。**
+#
+# 上游（臂/夹爪）全部经 atlas 解析 robonix 原语契约拿话题名，技能里不写死；解析不到就
+# 报错，不猜。夹爪不是单独的原语——它是 arm/joint_states 那条 JointState 流里的一个
+# 具名关节。
+#
+# Lifecycle（技能是懒激活的）：
+#   CMD_INIT      -> on_init：只解析配置。此时不碰 atlas、不碰 ROS、不装模型。
+#   CMD_ACTIVATE  -> on_activate：解析原语端点与视觉服务端点 → 建标定/客户端 →
+#                    起 ROS 节点。被 executor 在**第一次调用之前**触发；可重入。
+#   CMD_DEACTIVATE-> on_deactivate：拆订阅、关节点、断视觉 gRPC 通道。
+#
+# Capability surface（都在 robonix/skill/pick/* 下；driver 由框架自动注册共享的
+# robonix/lifecycle/driver，不在下面重复写）：
+#   pick     — 抓一次并保持握持，成功时停在 home 位、夹爪闭合。
+#   put_down — 松开夹爪、回安全位（不搬运）。
+#   observe  — 回观察位看一眼并报出测量与计划结论，只量不动。
+manifestVersion: 1
+
+package:
+  name: robonix.skill.pick.depth_grasp
+  version: 0.1.0
+  vendor: robonix
+  description: 深度几何抓取技能：抓取并保持握持 / 放下 / 观察，不依赖固定桌面高度。
+  license: MulanPSL-2.0
+  tags: [skill, pick, grasp, depth, rgbd]
+  maintainers: ["福伟 王 <137484563@qq.com>"]
+
+build: bash scripts/build.sh
+start: bash scripts/start.sh
+stop: bash scripts/stop.sh
+
+capabilities:
+  - name: robonix/skill/pick/pick
+    transport: mcp
+    path: capabilities/pick.v1.toml
+  - name: robonix/skill/pick/put_down
+    transport: mcp
+    path: capabilities/put_down.v1.toml
+  - name: robonix/skill/pick/observe
+    transport: mcp
+    path: capabilities/observe.v1.toml
+
+depends: []

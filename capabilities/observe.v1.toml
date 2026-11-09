@@ -1,0 +1,12 @@
+# robonix/skill/pick/observe — 回观察位看一眼、只量不动。
+#
+# User-invocable atomic intent: "看看现在能不能抓 / 看它在哪 / 检查一下"。
+# 给抓取之前确认现场、或抓失败后查原因用。臂只走"回观察位"这一步。
+[contract]
+id      = "robonix/skill/pick/observe"
+version = "1"
+kind    = "skill"
+idl     = "pick/srv/Observe.srv"
+
+[mode]
+type = "rpc"

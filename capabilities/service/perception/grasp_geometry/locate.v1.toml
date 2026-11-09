@@ -1,0 +1,16 @@
+# robonix/service/perception/grasp_geometry/locate — 深度几何抓取位姿估计（相机系）。
+#
+# 与 service/perception/grasp_pose 的区别：grasp_pose 是"bbox + 2D 单应 + 固定
+# 桌面高度 → 一个垂直抓取位姿"；本服务是"一帧 RGB-D → 承托面/物体顶面/长轴/闭合
+# 方向/跨度"这些几何量，不依赖固定台面高度，也不做像素→基座的那一步（那步靠 TF）。
+#
+# 输入来自 atlas 上绑定的相机 provider（primitive/camera/rgb + depth），不是调用方
+# 传图——服务持续订阅、取最新一帧，保证"量的是现在"。
+[contract]
+id      = "robonix/service/perception/grasp_geometry/locate"
+version = "1"
+kind    = "service"
+idl     = "grasp_geometry/srv/Locate.srv"
+
+[mode]
+type = "rpc"

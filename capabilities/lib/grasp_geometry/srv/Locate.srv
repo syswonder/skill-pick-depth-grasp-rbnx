@@ -1,0 +1,33 @@
+# robonix/service/perception/grasp_geometry/locate — 一帧 RGB-D → 抓取几何量（相机系）
+#
+# 服务自己从相机原语契约取最新一帧（配置绑定的相机 provider），调用方只给
+# "找什么"。输出一律在相机系（OpenCV 约定：x 右、y 下、z 前）；要落到臂/底盘
+# 基座系，由调用方自己乘一次 TF。
+#
+# 坐标/单位：长度米，像素坐标是原图坐标。
+
+# 目标名字（开放词表）。VLM 检测时当提示词；为空则必须给 box。
+string target
+
+# 可选：检测框 JSON `[x0, y0, x1, y1, angle_deg]`。
+# 非空就跳过检测、直接用这个框（仿真真值框 / 上游检测器给框时走这条）。
+string box
+---
+# 这一眼是否量出来了。false 时 message 写清原因（目标不在画面、深度无效、
+# 承托面拟合失败……）。**调用方不许拿旧值/默认值兜底。**
+bool success
+
+# 给人看的一句话；失败时是原因。
+string message
+
+# 几何结果 JSON（相机系，长度单位米）：
+#   top_point        [x, y, z]                     物体顶面点
+#   support          {point:[x,y,z], normal:[nx,ny,nz]}  承托面
+#   long_axis        [x, y, z]                     顶面内的单位长轴
+#   closing          [x, y, z]                     夹爪闭合方向（面内、垂直于长轴）
+#   footprint_width  float | null                  顶面在闭合方向上的跨度
+#   bbox             [x0, y0, x1, y1, angle]       实际使用的检测框（像素）
+#   frame_id         string                        相机光学 frame
+#   request_id       string                        本次请求 id（服务日志目录同名）
+#   diagnostics      object                        检测来源、每步耗时、VLM 原文等
+string result_json

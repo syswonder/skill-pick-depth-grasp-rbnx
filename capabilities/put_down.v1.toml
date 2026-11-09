@@ -1,0 +1,14 @@
+# robonix/skill/pick/put_down — 把手里握着的东西放到配置的放点并松开。
+#
+# User-invocable atomic intent: "放下 / 松手 / put it down"。
+# 语义与标准 pick/put_down 一致（请求无字段）。实现：臂先到配置的
+# put_down_joints_deg（没配就在当前位），开爪到最大开口，再回配置的
+# teach_safe_joints_deg（没配就回全零 home）。
+[contract]
+id      = "robonix/skill/pick/put_down"
+version = "1"
+kind    = "skill"
+idl     = "pick/srv/PutDown.srv"
+
+[mode]
+type = "rpc"

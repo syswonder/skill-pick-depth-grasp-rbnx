@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MulanPSL-2.0
+# 把机械臂那个 USB-CAN 口停掉。与 arm-can-up 同一套认口办法（见那个文件的说明）。
+#
+# 安装与 sudoers 见 arm-can-up 的头部注释。
+set -euo pipefail
+
+find_usb_can() {
+    local path dev
+    for path in /sys/class/net/can*; do
+        [ -e "$path" ] || continue
+        dev="$(readlink -f "$path/device" 2>/dev/null || true)"
+        case "${dev,,}" in
+            *usb*) basename "$path"; return 0 ;;
+        esac
+    done
+    return 1
+}
+
+if ! iface="$(find_usb_can)"; then
+    echo "找不到 USB-CAN 口（判据同 arm-can-up）。" >&2
+    exit 1
+fi
+
+state="$(cat "/sys/class/net/$iface/operstate" 2>/dev/null || echo unknown)"
+if [ "$state" != "up" ]; then
+    echo "$iface 本来就是 DOWN，不动它。"
+    exit 0
+fi
+
+ip link set "$iface" down
+echo "$iface 已停。"

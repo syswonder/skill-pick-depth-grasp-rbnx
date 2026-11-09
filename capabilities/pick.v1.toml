@@ -1,0 +1,17 @@
+# robonix/skill/pick — pick up a named object with the depth-geometry pipeline.
+#
+# 这是 `robonix/skill/pick/*` 命名空间下的一个实现（另一个实现是
+# skill-pick-vertical-grasp-rbnx）。同一个部署只能起一个 pick 实现。
+#
+# 语义与标准 Pick.srv 一致：抓起来并保持握持（不释放、不搬运）；请求是
+# 开放词表 object_name。与 vertical_grasp 的差别在"物体在哪、顶面多高"怎么来：
+# 本技能走腕上相机 RGB-D 深度几何（经 service/perception/grasp_geometry），
+# 不依赖 2D 单应和固定桌面高度。
+[contract]
+id      = "robonix/skill/pick/pick"
+version = "1"
+kind    = "skill"
+idl     = "pick/srv/Pick.srv"
+
+[mode]
+type = "rpc"

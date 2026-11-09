@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MulanPSL-2.0
+# 把机械臂那个 USB-CAN 口拉起来（down → 设 1 Mbps → up）。给标定工具当提权入口用。
+#
+# 为什么要有它：改接口状态要 CAP_NET_ADMIN，而标定台是普通用户跑的一个网页服务。
+# 与其给整个网页 root，不如只放行这一个脚本——接口名、波特率都写死在这个文件里，
+# 提权的面就只有"起停这一个口"。
+#
+# **接口名不写死**：与 common/robot/canbus.py 的 find_usb_can() 同一判据——USB-CAN
+# 适配器（gs_usb）在 sysfs 里指向 USB 设备，Jetson 板载的 mttcan 指向 platform/…。
+# 接口名开机后会漂（can0/can4/…），按驱动拓扑认口才稳。
+#
+# 安装（宿主上，一次）：
+#   sudo install -m 0755 tools/calibration/common/robot/arm-can-up   /usr/local/sbin/
+#   sudo install -m 0755 tools/calibration/common/robot/arm-can-down /usr/local/sbin/
+#   echo "$USER ALL=(root) NOPASSWD: /usr/local/sbin/arm-can-up, /usr/local/sbin/arm-can-down" \
+#     | sudo tee /etc/sudoers.d/arm-can >/dev/null && sudo chmod 440 /etc/sudoers.d/arm-can
+set -euo pipefail
+
+BITRATE=1000000
+
+find_usb_can() {
+    local path dev
+    for path in /sys/class/net/can*; do
+        [ -e "$path" ] || continue
+        dev="$(readlink -f "$path/device" 2>/dev/null || true)"
+        case "${dev,,}" in
+            *usb*) basename "$path"; return 0 ;;
+        esac
+    done
+    return 1
+}
+
+if ! iface="$(find_usb_can)"; then
+    echo "找不到 USB-CAN 口：/sys/class/net/can* 里没有一个的 device 指向 USB。" >&2
+    echo "板载 mttcan（platform/…）不是臂用的那个口——先确认 USB-CAN 适配器插上了。" >&2
+    exit 1
+fi
+
+# 本来就 UP 且波特率对，就一步都不发：正在用的口被弹一下，会话就断了
+state="$(cat "/sys/class/net/$iface/operstate" 2>/dev/null || echo unknown)"
+bitrate_now="$(ip -details link show "$iface" | sed -n 's/.*\bbitrate \([0-9]*\).*/\1/p' | head -1)"
+if [ "$state" = "up" ] && [ "$bitrate_now" = "$BITRATE" ]; then
+    echo "$iface 已经起来（${BITRATE} bps），不动它。"
+    exit 0
+fi
+
+ip link set "$iface" down
+ip link set "$iface" type can bitrate "$BITRATE"
+ip link set "$iface" up
+echo "$iface 已拉起：${BITRATE} bps"

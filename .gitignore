@@ -1,0 +1,6 @@
+# rbnx 生成物与运行期留档；不随包提交。
+rbnx-build/
+logs/
+__pycache__/
+*.pyc
+.pytest_cache/
